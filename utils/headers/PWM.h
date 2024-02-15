@@ -1,40 +1,36 @@
 #pragma once
 
-#include "driver/ledc.h"
+#include "driver/mcpwm.h"
 #include "esp_log.h"
 
 class PWM
 {
 protected:
-    ledc_timer_config_t timer_conf;
-    ledc_channel_config_t channel_conf;
+    mcpwm_config_t pwm_config;
 
 public:
     PWM(uint8_t channel,
         gpio_num_t gpio_num,
         uint32_t frequency = 5000,
         uint8_t resolution = 10) :
-        timer_conf({
-            .duty_resolution = resolution,
-            .freq_hz = frequency,
-            .speed_mode = LEDC_HIGH_SPEED_MODE,
-            .timer_num = LEDC_TIMER_0
-        }),
-        channel_conf({
-            .channel = LEDC_CHANNEL_0,
-            .duty = 0,
-            .gpio_num = gpio_num,
-            .intr_type = LEDC_INTR_DISABLE,
-            .speed_mode = LEDC_HIGH_SPEED_MODE,
-            .timer_sel = LEDC_TIMER_0
+        pwm_config({
+            .frequency = frequency,
+            .cmpr_a = 0,
+            .cmpr_b = 0,
+            .counter_mode = MCPWM_UP_COUNTER,
+            .duty_mode = MCPWM_DUTY_MODE_0
         }) {}
 
     esp_err_t INIT(void);
     esp_err_t setDutyCycle(uint8_t duty_cycle);
-    esp_err_t updateDuty();
+    esp_err_t setFrequencyAndResolution(uint16_t frequency, uint8_t resolution);
+    esp_err_t enableDeadtime(mcpwm_unit_t mcpwmNum, mcpwm_timer_t timerNum, uint32_t risingEdgeDeadtime, uint32_t fallingEdgeDeadtime);
+    esp_err_t initFaultHandling();
+    esp_err_t setFaultLevelLowToHigh(mcpwm_fault_signal_t fault_signal, uint32_t threshold);
+    esp_err_t setFaultLevelLowToLow(mcpwm_fault_signal_t fault_signal, uint32_t threshold);
+    esp_err_t setFaultLevelHighToLow(mcpwm_fault_signal_t fault_signal, uint32_t threshold);
+    esp_err_t setFaultLevelHighToHigh(mcpwm_fault_signal_t fault_signal, uint32_t threshold);
+    esp_err_t setFaultLevelByDutyCycle(mcpwm_fault_signal_t fault_signal, float duty_cycle);
+    void start();
     void stop();
-    void setFrequency(uint32_t frequency);
-    void setResolution(uint8_t resolution);
-    void setPhase(uint16_t phase);
-    void fade(uint8_t target_duty, uint32_t duration_ms);
 };
