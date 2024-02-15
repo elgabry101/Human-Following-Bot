@@ -2,98 +2,102 @@
 
 
 
-esp_err_t PWM::INIT() {
-    esp_err_t timer_err = ledc_timer_config(&timer_conf);
-    if (timer_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure PWM timer");
-        return timer_err;
+eesp_err_t PWM::INIT() {
+    esp_err_t pwm_err = mcpwm_init(MCPWM_UNIT_0, MCPWM_TIMER_0, &pwm_config);
+    if (pwm_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize MCPWM");
+        return pwm_err;
     }
-    
-    esp_err_t channel_err = ledc_channel_config(&channel_conf);
-    if (channel_err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to configure PWM channel");
-        return channel_err;
+    return ESP_OK;
+}
+
+
+
+esp_err_t PWM::setFrequencyAndResolution(uint16_t frequency, uint8_t resolution) {
+    // Calculate PWM prescaler value based on desired frequency
+    uint16_t prescaler;
+    if (frequency == 0) {
+        prescaler = 0; // Stop PWM
+    } else {
+        prescaler = 16000000 / (2 * frequency * (1 << resolution));
+        if (prescaler < 1) prescaler = 1;
+        else if (prescaler > 0xFF) prescaler = 0xFF;
     }
 
-    return ESP_OK; // Both timer and channel configurations were successful
+    // Set PWM frequency and resolution
+    mcpwm_timer_t timer_num = MCPWM_TIMER_0;
+    mcpwm_operator_t op_num = MCPWM_OPR_A;
+    mcpwm_timer_init(MCPWM_UNIT_0, timer_num, &pwm_config);
+    mcpwm_timer_set_frequency(MCPWM_UNIT_0, timer_num, frequency);
+    mcpwm_set_duty(MCPWM_UNIT_0, timer_num, op_num, 0); // Set duty cycle to 0 initially
+    mcpwm_start(MCPWM_UNIT_0, timer_num);
+
+    return ESP_OK;
+}
+
+
+esp_err_t PWM::enableDeadtime(mcpwm_unit_t mcpwmNum, mcpwm_timer_t timerNum, uint32_t risingEdgeDeadtime, uint32_t fallingEdgeDeadtime) {
+    // Configure dead time insertion for the specified MCPWM timer
+    mcpwm_deadtime_config_t deadtimeConfig;
+    deadtimeConfig.rise = risingEdgeDeadtime; // Rising edge dead time in nanoseconds
+    deadtimeConfig.fall = fallingEdgeDeadtime; // Falling edge dead time in nanoseconds
+    return mcpwm_deadtime_enable(mcpwmNum, timerNum, &deadtimeConfig);
 }
 
 
 esp_err_t PWM::setDutyCycle(uint8_t duty_cycle) {
-        uint32_t duty = ((uint32_t)duty_cycle * ((1 << timer_conf.duty_resolution) - 1)) / 100;
-        return ledc_set_duty(timer_conf.speed_mode, channel_conf.channel, duty);
-    }
+    return mcpwm_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, MCPWM_OPR_A, duty_cycle);
+}
 
 
-esp_err_t PWM::updateDuty() {
-        return ledc_update_duty(timer_conf.speed_mode, channel_conf.channel);
-    }
+void PWM::start(){
+    mcpwm_start(MCPWM_UNIT_0, MCPWM_TIMER_0);
+}
 
 
 void PWM::stop() { //used to disable the PWM, not to set the duty cycle to 0
-        ledc_stop(timer_conf.speed_mode, channel_conf.channel, 0);
-    }
-
-
-void PWM::setFrequency(uint32_t frequency) {
-        timer_conf.freq_hz = frequency;
-        ledc_timer_config(&timer_conf);
-    }
-
-
-void PWM::setResolution(uint8_t resolution) {
-        timer_conf.duty_resolution = resolution;
-        ledc_timer_config(&timer_conf);
-    }
-
-
-void PWM::setPhase(uint16_t phase) {
-    // Check if phase control is supported by your hardware
-    // This implementation assumes phase control is supported
-    ledc_set_phase(timer_conf.speed_mode, channel_conf.channel, phase);
-}
-
-
-void PWM::fade(uint8_t target_duty, uint32_t duration_ms) {
-    // Calculate the number of steps for the fade
-    const uint32_t num_steps = 100;
-    const uint32_t step_delay = duration_ms / num_steps;
-
-    // Calculate the change in duty cycle for each step
-    const uint8_t current_duty = channel_conf.duty;
-    const int16_t duty_change = target_duty - current_duty;
-
-    // Perform the fade
-    for (uint32_t step = 0; step < num_steps; ++step) {
-        uint8_t new_duty = current_duty + (duty_change * step) / num_steps;
-        setDutyCycle(new_duty);
-        updateDuty();
-        vTaskDelay(step_delay / portTICK_PERIOD_MS);
-    }
-
-    // Ensure the final duty cycle is set correctly
-    setDutyCycle(target_duty);
-    updateDuty();
+        mcpwm_stop(MCPWM_UNIT_0, MCPWM_TIMER_0);
 }
 
 
 
-
-/* notes about fade and set pase functions
-
-1- Phase Control: The setPhase() method sets the phase of the PWM signal.
-This can be useful for controlling the timing of the PWM signal relative to another event, 
-such as the position of a motor rotor.
-
-2- Fade Functionality: The fade() method gradually changes the duty cycle of the PWM signal from its current value to a target value over a specified duration.
-It calculates the number of steps needed for the fade and the change in duty cycle for each step.
-Then, it iterates through the steps, updating the duty cycle and delaying for a short period between each step to create a smooth transition.
-Finally, it ensures that the final duty cycle is set to the target value.
+// Initialize fault handling
+esp_err_t PWM::initFaultHandling() {
+    // Initialize fault detection and handling
+    return mcpwm_fault_init(MCPWM_UNIT_0, MCPWM_TIMER_0);
+}
 
 
+// Set fault level for low-to-high transition on the PWM signal
+esp_err_t PWM::setFaultLevelLowToHigh(mcpwm_fault_signal_t fault_signal, uint32_t threshold) {
+    // Set the fault level for low-to-high transition on the PWM signal
+    return mcpwm_fault_set_lh(MCPWM_UNIT_0, MCPWM_TIMER_0, fault_signal, threshold);
+}
 
-overall You can use these methods to control the speed of a DC motor by adjusting the duty cycle of the PWM signal.
-For example, you can gradually increase or decrease the duty cycle to accelerate or decelerate the motor smoothly,
-and you can adjust the phase of the PWM signal to synchronize it with the position of the motor rotor if necessary.
 
-*/
+// Set fault level for low-to-low transition on the PWM signal
+esp_err_t PWM::setFaultLevelLowToLow(mcpwm_fault_signal_t fault_signal, uint32_t threshold) {
+    // Set the fault level for low-to-low transition on the PWM signal
+    return mcpwm_fault_set_ll(MCPWM_UNIT_0, MCPWM_TIMER_0, fault_signal, threshold);
+}
+
+
+// Set fault level for high-to-low transition on the PWM signal
+esp_err_t PWM::setFaultLevelHighToLow(mcpwm_fault_signal_t fault_signal, uint32_t threshold) {
+    // Set the fault level for high-to-low transition on the PWM signal
+    return mcpwm_fault_set_hl(MCPWM_UNIT_0, MCPWM_TIMER_0, fault_signal, threshold);
+}
+
+
+// Set fault level for high-to-high transition on the PWM signal
+esp_err_t PWM::setFaultLevelHighToHigh(mcpwm_fault_signal_t fault_signal, uint32_t threshold) {
+    // Set the fault level for high-to-high transition on the PWM signal
+    return mcpwm_fault_set_hh(MCPWM_UNIT_0, MCPWM_TIMER_0, fault_signal, threshold);
+}
+
+
+// Set fault level based on the duty cycle
+esp_err_t PWM::setFaultLevelByDutyCycle(mcpwm_fault_signal_t fault_signal, float duty_cycle) {
+    // Set the fault level based on the duty cycle
+    return mcpwm_fault_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, fault_signal, duty_cycle);
+}
