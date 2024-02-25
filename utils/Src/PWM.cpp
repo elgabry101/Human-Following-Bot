@@ -101,3 +101,13 @@ esp_err_t PWM::setFaultLevelByDutyCycle(mcpwm_fault_signal_t fault_signal, float
     // Set the fault level based on the duty cycle
     return mcpwm_fault_set_duty(MCPWM_UNIT_0, MCPWM_TIMER_0, fault_signal, duty_cycle);
 }
+
+void PWM::move_forward(flaot duty_cycle) {
+    // Set motor to move forward
+    set_motor_speed(duty_cycle);
+}
+
+void PWM::move_backward(float duty_cycle) {
+    // Set motor to move backward
+    set_motor_speed(100 - duty_cycle); // Reverse direction by changing duty cycle
+}
