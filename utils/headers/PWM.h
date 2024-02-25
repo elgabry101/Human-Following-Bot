@@ -33,4 +33,6 @@ public:
     esp_err_t setFaultLevelByDutyCycle(mcpwm_fault_signal_t fault_signal, float duty_cycle);
     void start();
     void stop();
+    void move_forward();
+    void move_backward();
 };
