@@ -41,7 +41,7 @@ public:
         gpio_config(&cfg);
     };
 
-    esp_err_t attach_int(gpio_isr_t func);
+    esp_err_t attach_int(gpio_isr_t func,void * arg);
     esp_err_t set(bool level);
     esp_err_t toggle(void);
     [[nodiscard]] char read(void);

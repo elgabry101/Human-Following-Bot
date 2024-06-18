@@ -1,3 +1,5 @@
+#pragma once
+
 #include "esp_timer.h"
 
 
@@ -31,4 +33,5 @@ class timer
         };
         esp_err_t start_timer();
         esp_err_t stop_timer();
+        char is_started();
 };
