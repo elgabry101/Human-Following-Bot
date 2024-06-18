@@ -20,7 +20,6 @@ esp_err_t PIN::set(bool level)
     }
     else
     {
-        ESP_LOGI("echo","ana hena %i",pin_num);
         ret= ESP_FAIL;
     }
     return ret;

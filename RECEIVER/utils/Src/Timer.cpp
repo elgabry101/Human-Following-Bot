@@ -19,3 +19,8 @@ esp_err_t timer::stop_timer()
 {
     return esp_timer_stop(timer_handle);
 }
+
+char timer::is_started()
+{
+    return esp_timer_is_active(timer_handle);
+}

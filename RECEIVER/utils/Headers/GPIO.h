@@ -1,7 +1,6 @@
 #pragma once
 
 #include "driver/gpio.h"
-#include "esp_log.h"
 #define INPUT false
 #define OUTPUT true
 // this class only uses two gpio modes (output/input)
