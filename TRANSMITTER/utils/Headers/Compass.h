@@ -20,7 +20,6 @@ protected:
     esp_err_t write(uint8_t reg_addr, uint8_t data);
     esp_err_t read(uint8_t reg_addr, uint8_t *data, size_t len);
 public:
-    
     int heading;
     compass()
     {

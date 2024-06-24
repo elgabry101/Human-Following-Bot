@@ -30,12 +30,11 @@ void compass::update()
 {
         uint8_t data[6];
         read(0x03, data, 6);
-        int16_t x=((data[0]<<8)|data[1])+157.538040;
-        int16_t y=((data[4]<<8)|data[5])+46.354007;
-        int x_final=0.291047*x+0.004963*y;
-        int y_final=0.004963*x+0.284495*y;
-
-        heading = (atan2(y,x)*180.0 /M_PI);
+        int x=((int8_t)data[0]<<8|data[1])+177.107914;
+        int y=((int8_t)data[4]<<8|data[5])+42.218594;
+        int x_final=0.223917*x+0.003387*y;
+        int y_final=0.003387*x+0.221382*y;
+        heading = (atan2(y_final,x_final)*180.0 /M_PI);
         if(heading < 0)
             heading += 360;
         

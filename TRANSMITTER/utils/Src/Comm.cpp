@@ -49,3 +49,7 @@ void comm::decode_message(const uint8_t *buffer, size_t buffer_size, message_t *
     return esp_now_send(broadcastAddress, buffer, sizeof(buffer));
 }
 
+esp_err_t comm::register_cb(esp_now_recv_cb_t cb)
+{
+    return esp_now_register_recv_cb(cb);
+}
