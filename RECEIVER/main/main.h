@@ -37,7 +37,7 @@ static void IRAM_ATTR timer_cb(void* arg);
 void measure_distance(void * args);
 void navigate(void * arg);
 void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int data_len);
-
+void move(void * arg);
 
 
 
@@ -51,5 +51,6 @@ void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int data_len
 comm now;
 timer tmr;
 mcpwm_cap_timer_handle_t cap_timer;
-int lock=0;
+int main_lock=0;
 int head=0;
+ultrasonic* snsrs[3];

@@ -11,6 +11,7 @@ void motor::move_forward(int speed){
     ledc_set_duty(LEDC_HIGH_SPEED_MODE,channel,speed);
     ledc_update_duty(LEDC_HIGH_SPEED_MODE,channel);
 }
+
 void motor::move_backward(int speed){
     if(speed>16)
         speed=16;
@@ -20,6 +21,7 @@ void motor::move_backward(int speed){
     ledc_set_duty(LEDC_HIGH_SPEED_MODE,channel,speed);
     ledc_update_duty(LEDC_HIGH_SPEED_MODE,channel);
 }
+
 void motor::stop(){
     dir.set(0);
     ledc_set_duty(LEDC_HIGH_SPEED_MODE,channel,0);

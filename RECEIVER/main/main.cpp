@@ -12,12 +12,18 @@ extern "C" void app_main(void)
     ultrasonic snsr_l= ultrasonic(left_trigger,left_echo,cap_timer,"frst");
     ultrasonic snsr_m= ultrasonic(mid_trigger,mid_echo,cap_timer,"scnd");
     ultrasonic snsr_r= ultrasonic(right_trigger,right_echo,cap_timer,"thrd");
-    ultrasonic* snsrs[]={&snsr_l,&snsr_m,&snsr_r}; 
+    snsrs[0] = &snsr_l;
+    snsrs[1] = &snsr_m;
+    snsrs[2] = &snsr_r;
 
     tmr= timer(PERIODIC,100000,timer_cb,NULL);
     //esp now init process
     now.init();
     now.register_cb(OnDataRecv);
+
+    motor right=motor((gpio_num_t)22,(gpio_num_t)23,LEDC_CHANNEL_0);
+    motor left=motor((gpio_num_t)18,(gpio_num_t)19,LEDC_CHANNEL_1);
+    navigator controller = navigator(right,left);
 
 
 
@@ -25,10 +31,10 @@ extern "C" void app_main(void)
     TaskHandle_t task1;
     TaskHandle_t task2;
     TaskHandle_t task3;
-    xTaskCreatePinnedToCore(measure_distance,"left ultrasonic",1024*3,(void*)&snsr_l,4,&task1,1);
-    xTaskCreatePinnedToCore(measure_distance,"middle ultrasonic",1024*3,(void*)&snsr_m,4,&task2,1);
-    xTaskCreatePinnedToCore(measure_distance,"right ultrasonic",1024*3,(void*)&snsr_r,4,&task3,1);
-    xTaskCreate(navigate,"direction finding",1024*3,snsrs,4,NULL);
+    xTaskCreate(measure_distance,"left ultrasonic",1024*3,(void*)&snsr_l,4,&task1);
+    xTaskCreate(measure_distance,"middle ultrasonic",1024*3,(void*)&snsr_m,4,&task2);
+    xTaskCreate(measure_distance,"right ultrasonic",1024*3,(void*)&snsr_r,4,&task3);
+    xTaskCreate(navigate,"direction finding",1024*3,(void*)&controller,4,NULL);
     while(1)
     {
     }
@@ -37,28 +43,24 @@ extern "C" void app_main(void)
 
 void navigate(void * arg)
 {
-
-    motor right=motor((gpio_num_t)22,(gpio_num_t)23,LEDC_CHANNEL_0);
-    motor left=motor((gpio_num_t)18,(gpio_num_t)19,LEDC_CHANNEL_1);
-    navigator controller=navigator(right,left);
-    static ultrasonic ** snsrs=(ultrasonic**)arg;
+    navigator * controller = (navigator*)arg;
     while(1)
     {
 
-        controller.calculate(snsrs[0]->reading,snsrs[1]->reading,snsrs[2]->reading);
-        controller.lock=lock;
-        controller.update_heading();
-        controller.user_heading=head;
-        ESP_LOGI("navigate","user heading= %i  car heading= %i",controller.user_heading,controller.car_heading);
-        if(lock)
-        {
-            controller.move();
-        }
+        controller->readings[0]=snsrs[0]->reading;
+        controller->readings[1]=snsrs[1]->reading;
+        controller->readings[2]=snsrs[2]->reading;
+        //ESP_LOGI("navigate","%i   %i   %i",snsrs[0]->reading,snsrs[1]->reading,snsrs[2]->reading);
+        controller->user_heading=head;
+        controller->main_lock=main_lock;
+        controller->update_heading();
+        controller->make_decision();
+        controller->update_history();
+        controller->move();
         vTaskDelay(50/portTICK_PERIOD_MS);
     }
     
 }
-
 
 void measure_distance(void * args)
 {
@@ -150,7 +152,7 @@ void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int data_len
     now.decode_message(data, data_len, &received_data); // Decode received data
     if(received_data.data&0x01)
     {
-        lock=~lock;
+        main_lock=~main_lock;
         printf("Received data: %d\n", received_data.data);
     }
     else

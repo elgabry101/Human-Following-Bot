@@ -30,23 +30,20 @@ void compass::update()
 {
         uint8_t data[6];
         read(0x03, data, 6);
-        int x=((int8_t)data[2]<<8|data[3])-18.792467;
-        int y=((int8_t)data[0]<<8|data[1])-270.155914;
-        int x_final=0.262102*x-0.003479*y;
-        int y_final=-0.003479*x+0.233528*y;
-        heading = (atan2(y,x)*180.0 /M_PI);
-            
+        int x=((int8_t)data[0]<<8|data[1])-68.057881;
+        int y=((int8_t)data[2]<<8|data[3])+170.831551;
+        int x_final=0.162453*x+0.001841*y;
+        int y_final=0.001841*x+0.184632*y;
+        readings[0]=x;
+        readings[1]=y;
+        //printf("%i %i 0\n",x,y);
+        heading = (atan2(x_final,y_final)*180.0 /M_PI);
+
         if(heading < 0)
             heading += 360;
         else if (heading>360)
         {
             heading-=360;
         }
-        if(heading>260&&heading<340)
-        {
-            ESP_LOGI("ana","  ");
-            heading+=8;
-        }
-        
         
 }

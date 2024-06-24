@@ -2,14 +2,18 @@
 
 
 
-void navigator::calculate(int distance_l,int distance_m,int distance_r)
+entry navigator::calculate()
 {
+    int distance_l=readings[0];
+    int distance_m=readings[1];
+    int distance_r=readings[2];
     float theta_l=0,theta_r=0;
-    //ESP_LOGI("distance","left    %i   mid   %i   right %i ",distance_l,distance_m,distance_r);
+    int ret_distance=-1;
+    float ret_angle=0;
     if(distance_l>0 && distance_m>0 && distance_r>0)
     {
         
-        distance=(distance_l+distance_r+distance_m)/3;
+        ret_distance=(distance_l+distance_r+distance_m)/3;
         theta_l= (acos(inrange((left_right_pow+pow(distance_l,2)-pow(distance_r,2))/(2*left_right*distance_l)))*180/3.141593)-90;
         theta_r= (acos(inrange((left_right_pow+pow(distance_r,2)-pow(distance_l,2))/(2*left_right*distance_r)))*180/3.141593)-90;
         
@@ -17,7 +21,7 @@ void navigator::calculate(int distance_l,int distance_m,int distance_r)
     else if(distance_l>0 && distance_m>0)
     {
         
-        distance=(distance_l+distance_m)/2;
+        ret_distance=(distance_l+distance_m)/2;
         theta_l= (acos(inrange((mid_pow+pow(distance_l,2)-pow(distance_m,2))/(2*mid*distance_l)))*180/3.141593)-90;
         theta_r= (acos(inrange((mid_pow+pow(distance_m,2)-pow(distance_l,2))/(2*mid*distance_m)))*180/3.141593)-90;
 
@@ -25,14 +29,14 @@ void navigator::calculate(int distance_l,int distance_m,int distance_r)
     else if(distance_r>0 && distance_m>0)
     {
         
-        distance=(distance_r+distance_m)/2;
+        ret_distance=(distance_r+distance_m)/2;
         theta_l= (acos(inrange((mid_pow+pow(distance_m,2)-pow(distance_r,2))/(2*mid*distance_m)))*180/3.141593)-90;
         theta_r= (acos(inrange((mid_pow+pow(distance_r,2)-pow(distance_m,2))/(2*mid*distance_r)))*180/3.141593)-90;
 
     }
     else if(distance_r>0 && distance_l>0)
     {
-        distance=(distance_l+distance_r)/2;
+        ret_distance=(distance_l+distance_r)/2;
         theta_l= (acos(inrange((left_right_pow+pow(distance_l,2)-pow(distance_r,2))/(2*left_right*distance_l)))*180/3.141593)-90;
         theta_r= (acos(inrange((left_right_pow+pow(distance_r,2)-pow(distance_l,2))/(2*left_right*distance_r)))*180/3.141593)-90;
 
@@ -40,104 +44,127 @@ void navigator::calculate(int distance_l,int distance_m,int distance_r)
 
     else if(distance_l>0)
     {
-        distance=distance_l;
+        ret_distance=distance_l;
         theta_l= 90;
         theta_r= -90;
     }
     else if(distance_r>0)
     {
-        distance=distance_r;
+        ret_distance=distance_r;
         theta_l= -90;
         theta_r= 90;
     }
     else if(distance_m>0)
     {
-        distance=distance_m;
+        ret_distance=distance_m;
         theta_l= 0;
         theta_r= 0;
-    }
-    else if(stop_time<esp_timer_get_time())
-    {
-        distance=-1;
-        theta_l= 0;
-        theta_r= 0;
-        stop_time=esp_timer_get_time()+2000000;
-        augment_data();
-        return;
-    }
-
-
-    if(theta_l>2&&theta_l<91)
-    {
-        angle=-theta_l;
-    }
-    else if(theta_r>2&&theta_r<91)
-    {
-        angle=theta_r;
     }
     else
     {
-        angle=0;
+        ret_distance=-1;
+        theta_l= 0;
+        theta_r= 0;
     }
 
-    if(distance>0&&stop_time<esp_timer_get_time())
+
+    if(theta_l>2&&theta_l<=90)
+    {
+        ret_angle=-theta_l;
+    }
+    else if(theta_r>2&&theta_r<=90)
+    {
+        ret_angle=theta_r;
+    }
+    else
+    {
+        ret_angle=0;
+    }
+    entry s={ret_distance,ret_angle};
+    return s;
+}
+
+
+void navigator::update_history()
+{
+    if(distance>0&&distance<600&&stop_time<esp_timer_get_time())
     {
         entry s={distance,angle};
         history.push_back(s);
-        if(history.size()>200)
+
+        if(history.size()>100)
         {
             history.erase(history.begin());
         }
-            
     }
-    if(lock==0)
+    if(main_lock==0)
     {
-        left.stop();
-        right.stop();
-        for(int i=0;i<history.size();i++)
-        {
-            history.pop_back();
-        }
+        history.clear();
     }
 }
 
 
-
 void navigator::move()
 {
+    if(main_lock)
+    {
+        float speed= 8 + 0.08 * (distance-140);
+        float diffrence= angle*0.05;
+        if(speed>12&&(diffrence>3||diffrence<-3))
+        {
+            speed=12;
+        }
+        
+
+        if(diffrence<0)
+        {
+            diffrence=floor(diffrence);
+        }
+        else if(diffrence>0)
+        {
+            diffrence=ceil(diffrence);
+        }
 
 
-    float speed= 8 + 0.08 * (distance-140);
-    float diffrence= angle*0.05;
+        if(distance<0)
+        {
+            if(angle==0)
+            {
+                right.stop();
+                left.stop();
+            }
+            else if(angle>0&&abs(angle)>50)
+            {
+                left.move_forward(8);
+                right.move_backward(8);
+            }
+            else if(angle<0&&abs(angle)>50)
+            {
+                right.move_forward(8);
+                left.move_backward(8);
+            }
 
-    //ESP_LOGI("calculate","distance    %i     angle   %f ",distance,angle);
-    if(diffrence<0)
-    {
-        diffrence=floor(diffrence);
-    }
-    else if(diffrence>0)
-    {
-        diffrence=ceil(diffrence);
-    }
-    if(distance==-1)
-    {
-        right.stop();
-        left.stop();
-    }
-    else if(distance<110)
-    {
-        left.move_backward(10+diffrence);
-        right.move_backward(10-diffrence);
-    }
-    else if(distance<140)
-    {
-        right.stop();
-        left.stop();
+        }
+        else if(distance<110)
+        {
+            left.move_backward(8-(diffrence/2));
+            right.move_backward(8+(diffrence/2));
+        }
+        else if(distance<140)
+        {
+            right.stop();
+            left.stop();
+        }
+        else
+        {
+            left.move_forward(speed+diffrence);
+            right.move_forward(speed-diffrence);
+        }
     }
     else
     {
-        left.move_forward(speed+diffrence);
-        right.move_forward(speed-diffrence);
+        right.stop();
+        left.stop();
     }
 
 }
@@ -154,13 +181,14 @@ float navigator::inrange(float num)
 }
 
 
-void navigator::augment_data()
+entry navigator::augment_data()
 {
     if(!history.empty())
     {
-        int weight_window_size=100;
+        int ret_distance=-1;
+        float ret_angle=0;
+        int weight_window_size=20;
         entry weighted_avg;
-        ESP_LOGI("history","             distance %i          angle %f",history.front().distance,history.front().angle);
             int n = history.size();
         if (n < weight_window_size) {
             weight_window_size = n; // Adjust if history is smaller than the window
@@ -175,6 +203,7 @@ void navigator::augment_data()
             weighted_sum_distance += history[i].distance * weight;
             weighted_sum_angle += history[i].angle * weight;
             weight_sum += weight;
+            ESP_LOGI("first loop","     %i         distance %i          angle %f",i,history[i].distance,history[i].angle);
         }
 
         weighted_avg.distance= weighted_sum_distance / weight_sum;
@@ -196,12 +225,18 @@ void navigator::augment_data()
         double avg_velocity_angle = total_angle_diff / weight_sum;
 
         // Predict the next position
-        double next_distance = weighted_avg.distance + avg_velocity_distance;
-        double next_angle = weighted_avg.angle + avg_velocity_angle;
-        distance=next_distance;
-        angle=next_angle;
-        ESP_LOGI("predict","                                                       distance= %lf   angle=%lf",next_distance,next_angle);
+        float next_distance = weighted_avg.distance + avg_velocity_distance;
+        float next_angle = weighted_avg.angle + avg_velocity_angle;
+        ret_distance=next_distance;
+        ret_angle=next_angle;
         history.clear();
+        entry ret={ret_distance,ret_angle};
+        return ret;
+    }
+    else
+    {
+        entry ret={-1,0};
+        return ret;
     }
 
 }
@@ -211,4 +246,55 @@ void navigator::update_heading()
 {
     dir.update();
     car_heading=dir.heading;
+    int tmp=user_heading-car_heading+40;
+    tmp=(tmp+180)%360;
+    if(tmp<0)
+    {
+        tmp+=360;
+    }
+    align=tmp-180;
+    //ESP_LOGI("heading","car=%f  user=%i   align=%i",dir.heading,user_heading,align);
+}
+
+
+void navigator::make_decision()
+{
+    entry calc=calculate();
+    ESP_LOGI("out","                                          align=%i", align);
+    if(calc.distance==-1&&stop_time<esp_timer_get_time())
+    {
+        //entry augment=augment_data();
+        stop_time=esp_timer_get_time()+1000000;
+        distance=-1;
+        if(count==0)
+        {
+            angle=align;
+            count++;
+        }
+        else
+        {
+            angle=0;
+        }
+        ESP_LOGI("first","distance=%i angle =%f", distance, angle);
+    }
+    else if(calc.distance>0&&abs(calc.angle-align)<80)
+    {
+        distance=calc.distance;
+        angle=calc.angle;
+        count=0;
+        ESP_LOGI("second","distance=%i angle =%f", distance, angle);
+    }
+    else if(calc.distance>0&&((calc.angle>20&&align<-20)||(calc.angle<-20&&align>20)||abs(calc.angle-align)>80))
+    {
+
+        distance=calc.distance;
+        angle=align;
+        count=0;
+        if(abs(calc.angle-align)>120)
+        {
+            distance=-1;
+        }
+        ESP_LOGI("third","distance= %i angle =%i", distance, align);
+    }
+    
 }

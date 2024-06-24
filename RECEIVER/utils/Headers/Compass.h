@@ -20,8 +20,8 @@ protected:
     esp_err_t write(uint8_t reg_addr, uint8_t data);
     esp_err_t read(uint8_t reg_addr, uint8_t *data, size_t len);
 public:
-    
-    double heading;
+    int readings[2];
+    float heading;
     compass()
     {
     i2c_port_t i2c_master_port = I2C_MASTER_NUM;

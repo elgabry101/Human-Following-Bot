@@ -26,21 +26,27 @@ class navigator {
 protected:
     motor left;
     motor right;
-    compass dir=compass();
     int distance=0;
     float angle=0;
     vector<entry> history;
 public:
-    int lock=0;
+    compass dir=compass();
+    int readings[3];
+    int main_lock=0;
     int user_heading=0;
     int car_heading=0;
+    int count=0;
+    int align=0;
     navigator(){};
     unsigned long stop_time=0;
     navigator(motor right,motor left):left{left},right{right} {dir.init();};
-    void calculate(int distance_l,int distance_m,int distance_r);
+
+
+    entry calculate();
     float inrange(float);
     void move();
-    void augment_data();
+    entry augment_data();
     void update_heading();
-
+    void update_history();
+    void make_decision();
 };
