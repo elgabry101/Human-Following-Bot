@@ -29,6 +29,7 @@ protected:
     int distance=0;
     float angle=0;
     vector<entry> history;
+    vector<int> web_history;
 public:
     compass dir=compass();
     int readings[3];

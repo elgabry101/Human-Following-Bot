@@ -1,5 +1,10 @@
 #include "main.h"
 
+int f=0;
+int b=0;
+int l=0;
+int r=0;
+int h=0;
 
 
 extern "C" void app_main(void)
@@ -50,8 +55,8 @@ void navigate(void * arg)
         controller->readings[0]=snsrs[0]->reading;
         controller->readings[1]=snsrs[1]->reading;
         controller->readings[2]=snsrs[2]->reading;
-        //ESP_LOGI("navigate","%i   %i   %i",snsrs[0]->reading,snsrs[1]->reading,snsrs[2]->reading);
-        controller->user_heading=head;
+        //printf("left sensor:%i cm   middle sensor:%i cm   rigt sensor:%i cm\n",snsrs[0]->reading,snsrs[1]->reading,snsrs[2]->reading);
+        controller->user_heading=head-20;
         controller->main_lock=main_lock;
         controller->update_heading();
         controller->make_decision();
@@ -133,12 +138,16 @@ mcpwm_cap_timer_handle_t cap_timer_init()
 
 static void IRAM_ATTR timer_cb(void* arg)
 {   
-    gpio_set_level(mid_trigger,0);
-    gpio_set_level(right_trigger,0);
-    gpio_set_level(left_trigger,0);
-    gpio_set_level(mid_trigger,1);
-    gpio_set_level(right_trigger,1);
-    gpio_set_level(left_trigger,1);
+    if(main_lock)
+    {
+        gpio_set_level(mid_trigger,0);
+        gpio_set_level(right_trigger,0);
+        gpio_set_level(left_trigger,0);
+        gpio_set_level(mid_trigger,1);
+        gpio_set_level(right_trigger,1);
+        gpio_set_level(left_trigger,1);
+    }
+
 }
 
 
@@ -158,6 +167,58 @@ void OnDataRecv(const esp_now_recv_info *info, const uint8_t *data, int data_len
     else
     {   
         head=received_data.data>>2;
+        int web_data=received_data.data>>11;
+        if(web_data>0)
+        {
+            main_lock=0;
+            if(web_data==1)
+            {
+                f=1;
+                b=0;
+                r=0;
+                l=0;
+                h=0;
+            }
+            else if(web_data==2)
+            {
+                b=1;
+                f=0;
+                r=0;
+                l=0;
+                h=0;
+            }
+            else if(web_data==4)
+            {
+                r=1;
+                b=0;
+                f=0;
+                l=0;
+                h=0;
+            }
+            else if(web_data==8)
+            {
+                l=1;
+                r=0;
+                b=0;
+                f=0;
+                h=0;
+            }
+            else if(web_data==15)
+            {
+                h=1;
+                l=0;
+                r=0;
+                b=0;
+                f=0;
+            }
+        }
+        else
+        {
+                l=0;
+                r=0;
+                b=0;
+                f=0;
+        }
     }
     
 }

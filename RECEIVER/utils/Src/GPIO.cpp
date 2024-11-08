@@ -5,7 +5,7 @@
 esp_err_t PIN::attach_int(gpio_isr_t func)
 {
     esp_err_t ret=ESP_OK;
-    ret|=gpio_install_isr_service(0);
+    ret|= gpio_install_isr_service(0);
     ret|= gpio_isr_handler_add(pin_num,func,(void *) pin_num);
     return ret;
 }

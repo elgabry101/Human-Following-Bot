@@ -2,6 +2,12 @@
 
 
 
+extern int f;
+extern int b;
+extern int l;
+extern int r;
+extern int h;
+
 entry navigator::calculate()
 {
     int distance_l=readings[0];
@@ -101,6 +107,14 @@ void navigator::update_history()
     {
         history.clear();
     }
+    if(web_history.size()>1800)
+    {
+        web_history.clear();
+    }
+    else if(web_history.empty())
+    {
+        web_history.push_back(0);
+    }
 }
 
 
@@ -133,15 +147,15 @@ void navigator::move()
                 right.stop();
                 left.stop();
             }
-            else if(angle>0&&abs(angle)>50)
+            else if(angle>0&&abs(angle)>30)
             {
-                left.move_forward(8);
-                right.move_backward(8);
+                left.move_forward(10);
+                right.move_backward(10);
             }
-            else if(angle<0&&abs(angle)>50)
+            else if(angle<0&&abs(angle)>30)
             {
-                right.move_forward(8);
-                left.move_backward(8);
+                right.move_forward(10);
+                left.move_backward(10);
             }
 
         }
@@ -163,8 +177,73 @@ void navigator::move()
     }
     else
     {
-        right.stop();
-        left.stop();
+        if(f==1||(h==1&&web_history.at(web_history.size()-1)==1))
+        {
+            left.move_forward(8);
+            right.move_forward(8);
+            if(!h)
+            {
+                web_history.push_back(2);
+            }
+            else
+            {
+                web_history.pop_back();
+            }
+            
+        }
+        else if(b==1||(h==1&&web_history.at(web_history.size()-1)==2))
+        {
+            right.move_backward(8);
+            left.move_backward(8);
+            if(!h)
+            {
+                web_history.push_back(1);
+            }
+            else
+            {
+                web_history.pop_back();
+            }
+        }
+        else if(r==1||(h==1&&web_history.at(web_history.size()-1)==2))
+        {
+            left.move_forward(10);
+            right.move_backward(10);
+            if(!h)
+            {
+                web_history.push_back(8);
+            }
+            else
+            {
+                web_history.pop_back();
+            }
+        }
+        else if(l==1||(h==1&&web_history.at(web_history.size()-1)==2))
+        {
+            right.move_forward(10);
+            left.move_backward(10);
+            if(!h)
+            {
+                web_history.push_back(4);
+            }
+            else
+            {
+                web_history.pop_back();
+            }
+        }
+        else
+        {
+            right.stop();
+            left.stop();
+            if(!h)
+            {
+                web_history.push_back(0);
+            }
+            else
+            {
+                web_history.pop_back();
+            }
+        }
+        
     }
 
 }
@@ -246,7 +325,7 @@ void navigator::update_heading()
 {
     dir.update();
     car_heading=dir.heading;
-    int tmp=user_heading-car_heading+40;
+    int tmp=user_heading-car_heading;
     tmp=(tmp+180)%360;
     if(tmp<0)
     {
@@ -260,41 +339,31 @@ void navigator::update_heading()
 void navigator::make_decision()
 {
     entry calc=calculate();
-    ESP_LOGI("out","                                          align=%i", align);
-    if(calc.distance==-1&&stop_time<esp_timer_get_time())
+
+    if(calc.distance==-1)
     {
-        //entry augment=augment_data();
-        stop_time=esp_timer_get_time()+1000000;
         distance=-1;
-        if(count==0)
-        {
-            angle=align;
-            count++;
-        }
-        else
-        {
-            angle=0;
-        }
-        ESP_LOGI("first","distance=%i angle =%f", distance, angle);
+        angle=align;
+        //ESP_LOGI("first","distance=%i angle =%f", distance, angle);
     }
-    else if(calc.distance>0&&abs(calc.angle-align)<80)
+    else if(calc.distance>0&&abs(align)<80)
     {
         distance=calc.distance;
         angle=calc.angle;
         count=0;
-        ESP_LOGI("second","distance=%i angle =%f", distance, angle);
+        //ESP_LOGI("second","distance=%i angle =%f", distance, angle);
     }
-    else if(calc.distance>0&&((calc.angle>20&&align<-20)||(calc.angle<-20&&align>20)||abs(calc.angle-align)>80))
+    else if(calc.distance>0&&((calc.angle>20&&align<-20)||(calc.angle<-20&&align>20)||abs(calc.angle-align)>=80))
     {
 
         distance=calc.distance;
         angle=align;
         count=0;
-        if(abs(calc.angle-align)>120)
+        if(abs(align)>120)
         {
             distance=-1;
         }
-        ESP_LOGI("third","distance= %i angle =%i", distance, align);
+        //ESP_LOGI("third","distance= %i angle =%i", distance, align);
     }
     
 }
