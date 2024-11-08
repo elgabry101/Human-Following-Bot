@@ -1,5 +1,10 @@
 #include "main.h"
 
+extern int f;
+extern int b;
+extern int l;
+extern int r;
+extern int h;
 
 extern "C" void app_main(void)
 {
@@ -15,6 +20,7 @@ extern "C" void app_main(void)
     xTaskCreate(update_heading,"heading",1024*3,(void*)&now,4,NULL);
     while(1)
     {
+
     }
 
 }
@@ -30,8 +36,39 @@ void update_heading(void * args)
         comp.update();
         if(tmr.is_started())
         {
-            now->send_data(comp.heading<<2);
-            ESP_LOGI("sent","%i",comp.heading);
+            int data=comp.heading<<2;
+            if(f==1)
+            {
+                f=0;
+                data|=1<<11;
+                ESP_LOGI("sent","front");
+            }
+            else if(b==1)
+            {
+                b=0;
+                data|=2<<11;
+                ESP_LOGI("sent","back");
+            }
+            else if(r==1)
+            {
+                r=0;
+                data|=4<<11;
+                ESP_LOGI("sent","right");
+            }
+            else if(l==1)
+            {
+                l=0;
+                data|=8<<11;
+                ESP_LOGI("sent","left");
+            }
+            else if(h==1)
+            {
+                h=0;
+                data|=15<<11;
+                ESP_LOGI("sent","history");
+            }
+            now->send_data(data);
+            ESP_LOGI("sent","%i",data>>11);
         }
         vTaskDelay(100/portTICK_PERIOD_MS);
         

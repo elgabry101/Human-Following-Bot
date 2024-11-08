@@ -34,7 +34,7 @@ void compass::update()
         int y=((int8_t)data[4]<<8|data[5])+42.218594;
         int x_final=0.223917*x+0.003387*y;
         int y_final=0.003387*x+0.221382*y;
-        heading = (atan2(y_final,x_final)*180.0 /M_PI);
+        heading = (atan2(y_final,x_final)*180.0 /M_PI)-20;
         if(heading < 0)
             heading += 360;
         
